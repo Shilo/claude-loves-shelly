@@ -37,6 +37,14 @@ if [ -z "$CMD" ]; then
   exit 0
 fi
 
+# Replace template variables with hook input values
+CMD="${CMD//\{prompt\}/$HOOK_PROMPT}"
+CMD="${CMD//\{session_id\}/$HOOK_SESSION_ID}"
+CMD="${CMD//\{transcript_path\}/$HOOK_TRANSCRIPT_PATH}"
+CMD="${CMD//\{cwd\}/$HOOK_CWD}"
+CMD="${CMD//\{permission_mode\}/$HOOK_PERMISSION_MODE}"
+CMD="${CMD//\{hook_event_name\}/$HOOK_EVENT_NAME}"
+
 # Detect platform and open external terminal
 OS=$(uname -s)
 case "$OS" in
