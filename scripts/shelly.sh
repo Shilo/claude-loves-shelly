@@ -72,6 +72,6 @@ case "$OS" in
     ;;
 esac
 
-JSON_CMD=$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+JSON_CMD=$(printf '%s' "$CMD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
 printf '{"decision":"block","reason":"Opened external terminal: %s"}\n' "$JSON_CMD"
 exit 0
