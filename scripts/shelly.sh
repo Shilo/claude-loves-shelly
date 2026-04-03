@@ -140,7 +140,7 @@ case "$OS" in
   MINGW*|MSYS*|CYGWIN*)
     if command -v wt.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
-        MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" cmd /k "echo $HOOK_CWD^>$CMD && $CMD" 2>/dev/null &
+        MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" powershell -NoExit -Command "Write-Host '${HOOK_CWD}> ${CMD}'; ${CMD}" 2>/dev/null &
       else
         MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" 2>/dev/null &
       fi
