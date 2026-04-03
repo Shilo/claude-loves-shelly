@@ -108,6 +108,10 @@ fi
 
 # For auto-close (>>), run locally and capture output instead of opening a terminal
 if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) INLINE_NAME="Git Bash" ;;
+    *)                     INLINE_NAME="Bash" ;;
+  esac
   SHELLY_TIMEOUT="${SHELLY_TIMEOUT:-10}"
   JSON_CMD=$(printf '%s' "$CMD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
   if command -v timeout >/dev/null 2>&1; then
@@ -119,10 +123,10 @@ if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
   if [ -n "$CAPTURE" ]; then
     JSON_CWD=$(printf '%s' "$HOOK_CWD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
     JSON_CAPTURE=$(printf '%s' "$CAPTURE" | sed 's/[\\]/\\\\/g; s/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-    printf '{"decision":"block","reason":"[Claude Loves Shelly]\\n%s> %s\\n%s"}\n' "$JSON_CWD" "$JSON_CMD" "$JSON_CAPTURE"
+    printf '{"decision":"block","reason":"[Claude Loves Shelly - %s]\\n%s> %s\\n%s"}\n' "$INLINE_NAME" "$JSON_CWD" "$JSON_CMD" "$JSON_CAPTURE"
   else
     JSON_CWD=$(printf '%s' "$HOOK_CWD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
-    printf '{"decision":"block","reason":"[Claude Loves Shelly]\\n%s> %s\\n(no output)"}\n' "$JSON_CWD" "$JSON_CMD"
+    printf '{"decision":"block","reason":"[Claude Loves Shelly - %s]\\n%s> %s\\n(no output)"}\n' "$INLINE_NAME" "$JSON_CWD" "$JSON_CMD"
   fi
   exit 0
 fi
@@ -139,12 +143,14 @@ OS=$(uname -s)
 case "$OS" in
   MINGW*|MSYS*|CYGWIN*)
     if command -v wt.exe >/dev/null 2>&1; then
+      TERMINAL_NAME="Windows Terminal"
       if [ -n "$CMD" ]; then
         MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" powershell -NoExit -Command "Write-Host 'PS ${HOOK_CWD}> ${CMD}'\; ${CMD}\; Write-Host ''" 2>/dev/null &
       else
         MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" 2>/dev/null &
       fi
     elif command -v powershell.exe >/dev/null 2>&1; then
+      TERMINAL_NAME="PowerShell"
       if [ -n "$CMD" ]; then
         BATCH="$TEMP/shelly_$$.ps1"
         printf 'Set-Location "%s"\r\nWrite-Host "PS %s> %s"\r\n%s\r\nWrite-Host ""\r\n' "$HOOK_CWD" "$HOOK_CWD" "$CMD" "$CMD" > "$BATCH"
@@ -155,6 +161,7 @@ case "$OS" in
 
       fi
     else
+      TERMINAL_NAME="Command Prompt"
       if [ -n "$CMD" ]; then
         BATCH="$TEMP/shelly_$$.bat"
         printf '@echo off\r\ncd /d "%s"\r\necho %s^>%s\r\n%s\r\necho.\r\ncmd /k\r\n' "$HOOK_CWD" "$HOOK_CWD" "$CMD" "$CMD" > "$BATCH"
@@ -169,6 +176,7 @@ case "$OS" in
     fi
     ;;
   Darwin)
+    TERMINAL_NAME="Terminal"
     if [ -n "$CMD" ]; then
       ESCAPED=$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
       ESCAPED_TITLE=$(printf '%s' "$TITLE" | sed 's/\\/\\\\/g; s/"/\\"/g')
@@ -186,30 +194,35 @@ case "$OS" in
       BASH_CMD="echo '$HOOK_CWD\$ $CMD' && $CMD && echo; exec bash"
     fi
     if command -v x-terminal-emulator >/dev/null 2>&1; then
+      TERMINAL_NAME="Terminal"
       if [ -n "$CMD" ]; then
         nohup x-terminal-emulator -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && $BASH_CMD" >/dev/null 2>&1 &
       else
         nohup x-terminal-emulator -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && exec bash" >/dev/null 2>&1 &
       fi
     elif command -v gnome-terminal >/dev/null 2>&1; then
+      TERMINAL_NAME="GNOME Terminal"
       if [ -n "$CMD" ]; then
         nohup gnome-terminal --title="$TITLE" --working-directory="$HOOK_CWD" -- bash -c "$BASH_CMD" >/dev/null 2>&1 &
       else
         nohup gnome-terminal --title="$TITLE" --working-directory="$HOOK_CWD" >/dev/null 2>&1 &
       fi
     elif command -v konsole >/dev/null 2>&1; then
+      TERMINAL_NAME="Konsole"
       if [ -n "$CMD" ]; then
         nohup konsole -p tabtitle="$TITLE" --workdir "$HOOK_CWD" -e bash -c "$BASH_CMD" >/dev/null 2>&1 &
       else
         nohup konsole -p tabtitle="$TITLE" --workdir "$HOOK_CWD" >/dev/null 2>&1 &
       fi
     elif command -v xfce4-terminal >/dev/null 2>&1; then
+      TERMINAL_NAME="Xfce Terminal"
       if [ -n "$CMD" ]; then
         nohup xfce4-terminal --title="$TITLE" --working-directory="$HOOK_CWD" -e "bash -c \"$BASH_CMD\"" >/dev/null 2>&1 &
       else
         nohup xfce4-terminal --title="$TITLE" --working-directory="$HOOK_CWD" >/dev/null 2>&1 &
       fi
     elif command -v xterm >/dev/null 2>&1; then
+      TERMINAL_NAME="XTerm"
       if [ -n "$CMD" ]; then
         nohup xterm -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && $BASH_CMD" >/dev/null 2>&1 &
       else
@@ -228,8 +241,8 @@ esac
 
 if [ -n "$CMD" ]; then
   JSON_CMD=$(printf '%s' "$CMD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
-  printf '{"decision":"block","reason":"[Claude Loves Shelly]\\nOpened external terminal: %s"}\n' "$JSON_CMD"
+  printf '{"decision":"block","reason":"[Claude Loves Shelly - %s]\\nOpened external terminal: %s"}\n' "$TERMINAL_NAME" "$JSON_CMD"
 else
-  printf '{"decision":"block","reason":"[Claude Loves Shelly]\\nOpened terminal"}\n'
+  printf '{"decision":"block","reason":"[Claude Loves Shelly - %s]\\nOpened terminal"}\n' "$TERMINAL_NAME"
 fi
 exit 0
