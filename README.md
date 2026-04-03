@@ -44,6 +44,8 @@ Commands open in a new external terminal window so you can see output and intera
 | `>+name` | Look up bookmark |
 | `>-name` | Remove bookmark |
 | `>name` | Run bookmark (if exists, otherwise runs as command) |
+| `>!alias command` | Run command in specific terminal |
+| `>>!alias command` | Run and capture output using specific terminal's shell |
 | `/shelly command` | Same as `>command` |
 | `/shelly >command` | Same as `>>command` |
 
@@ -116,9 +118,37 @@ Commands and bookmarks can include template variables that get replaced with hoo
 | `{permission_mode}` | Current permission mode |
 | `{hook_event_name}` | Hook event name |
 
+## Terminal Selection
+
+Override the default terminal with `!alias` after the `>` prefix:
+
+```
+>!cmd echo hello
+>>!ps git status
+>!iterm npm test
+/shelly !cmd echo hello
+/shelly >!ps git status
+```
+
+| Platform | Alias | Terminal |
+|----------|-------|----------|
+| Windows | `wt` | Windows Terminal |
+| Windows | `ps` | PowerShell |
+| Windows | `cmd` | Command Prompt |
+| macOS | `terminal` | Terminal.app |
+| macOS | `iterm` | iTerm2 |
+| Linux | `gnome` | GNOME Terminal |
+| Linux | `konsole` | Konsole |
+| Linux | `xfce` | Xfce Terminal |
+| Linux | `xterm` | XTerm |
+
+Without `!alias`, Shelly auto-detects the best available terminal (default behavior).
+
 ## How it works
 
 A `UserPromptSubmit` hook intercepts prompts starting with `>` or `/shelly` (case-insensitive), extracts the command, and opens it in a platform-native terminal. `>>` or `/shelly >` runs the command locally and captures output instead.
+
+Use `>!alias` to bypass auto-detection and target a specific terminal (e.g., `>!cmd` for Command Prompt on Windows, `>!iterm` for iTerm2 on macOS).
 
 | Platform | Terminal |
 |----------|----------|
