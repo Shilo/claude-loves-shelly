@@ -117,6 +117,8 @@ fi
 
 # For auto-close (>>), run locally and capture output instead of opening a terminal
 if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
+  # Alias overrides: cmd/ps change the shell used for execution;
+  # emulator aliases (wt, iterm, gnome, etc.) only change the display label
   SHELL_CMD="bash -c"
   case "$(uname -s)" in
     MINGW*|MSYS*|CYGWIN*)
