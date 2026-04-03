@@ -26,13 +26,19 @@ case "$OPERATION" in
       EXISTING=$(BOOKMARKS_FILE="$BOOKMARKS_FILE" BM_NAME="$NAME" node -e "
         const d=JSON.parse(require('fs').readFileSync(process.env.BOOKMARKS_FILE,'utf8'));
         const name=process.env.BM_NAME;
-        if(d[name]) console.log(name+': '+d[name]);
+        if(d[name]) console.log('- '+name+': '+d[name]);
         else { console.log(\"Bookmark '\"+name+\"' does not exist\"); process.exit(1); }
       " 2>/dev/null)
       STATUS=$?
       printf '%s\n' "$EXISTING"
       exit $STATUS
     fi
+    # Check if bookmark already exists
+    OLD_COMMAND=$(BOOKMARKS_FILE="$BOOKMARKS_FILE" BM_NAME="$NAME" node -e "
+      const d=JSON.parse(require('fs').readFileSync(process.env.BOOKMARKS_FILE,'utf8'));
+      const name=process.env.BM_NAME;
+      if(d[name]) process.stdout.write(d[name]);
+    " 2>/dev/null)
     # Save bookmark
     BOOKMARKS_FILE="$BOOKMARKS_FILE" BM_NAME="$NAME" node -e "
       const fs=require('fs');
@@ -42,7 +48,11 @@ case "$OPERATION" in
       d[name]=$(printf '%s' "$COMMAND" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync(0,'utf8')))");
       fs.writeFileSync(file,JSON.stringify(d,null,2)+'\n');
     " 2>/dev/null
-    printf "Saved bookmark '%s': %s\n" "$NAME" "$COMMAND"
+    if [ -n "$OLD_COMMAND" ]; then
+      printf "Edited bookmark '%s':\n  before: %s\n  after:  %s\n" "$NAME" "$OLD_COMMAND" "$COMMAND"
+    else
+      printf "Saved bookmark '%s': %s\n" "$NAME" "$COMMAND"
+    fi
     ;;
 
   remove)
@@ -70,7 +80,7 @@ case "$OPERATION" in
       const d=JSON.parse(require('fs').readFileSync(process.env.BOOKMARKS_FILE,'utf8'));
       const keys=Object.keys(d);
       if(!keys.length){ console.log('No bookmarks saved'); process.exit(0); }
-      keys.forEach(k=>console.log(k+': '+d[k]));
+      keys.forEach(k=>console.log('- '+k+': '+d[k]));
     " 2>/dev/null)
     printf '%s\n' "$RESULT"
     ;;

@@ -4,7 +4,7 @@
 INPUT=$(cat)
 eval "$(printf '%s' "$INPUT" | node -e "
   const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
-  const esc=s=>(s||'').replace(/\\\\/g,'\\\\\\\\').replace(/'/g,\"'\\\\''\");
+  const esc=s=>(s||'').replace(/'/g,\"'\\\\''\");
   const m={prompt:'PROMPT',session_id:'SESSION_ID',transcript_path:'TRANSCRIPT_PATH',
            cwd:'CWD',permission_mode:'PERMISSION_MODE',hook_event_name:'EVENT_NAME'};
   Object.entries(m).forEach(([k,v])=>console.log('HOOK_'+v+\"='\"+esc(d[k])+\"'\"));
@@ -27,8 +27,7 @@ elif [ "${HOOK_PROMPT#>}" != "$HOOK_PROMPT" ]; then
 elif [ "${LOWER#/shelly }" != "$LOWER" ]; then
   CMD="${HOOK_PROMPT#????????}"
 elif [ "$LOWER" = "/shelly" ]; then
-  printf '{"decision":"block","reason":"Usage: >[command] or /shelly [command]. Example: >git status"}\n'
-  exit 0
+  CMD=""
 else
   exit 0
 fi
@@ -36,10 +35,16 @@ fi
 # Trim leading whitespace
 CMD=$(printf '%s' "$CMD" | sed 's/^[[:space:]]*//')
 
-# Empty CMD after /shelly shows usage; bare > and >> open a terminal
-if [ -z "$CMD" ] && [ "${HOOK_PROMPT#>}" = "$HOOK_PROMPT" ]; then
-  printf '{"decision":"block","reason":"Usage: >[command] or /shelly [command]. Example: >git status"}\n'
-  exit 0
+# For /shelly, handle >> and > prefixes in CMD (e.g. /shelly >cmd = >>cmd)
+if [ "${HOOK_PROMPT#>}" = "$HOOK_PROMPT" ] && [ -n "$CMD" ]; then
+  if [ "${CMD#>>}" != "$CMD" ]; then
+    CMD="${CMD#>>}"
+    KEEP_OPEN=false
+    CMD=$(printf '%s' "$CMD" | sed 's/^[[:space:]]*//')
+  elif [ "${CMD#>}" != "$CMD" ]; then
+    CMD="${CMD#>}"
+    CMD=$(printf '%s' "$CMD" | sed 's/^[[:space:]]*//')
+  fi
 fi
 
 if [ -n "$CMD" ]; then
@@ -54,7 +59,7 @@ if [ -n "$CMD" ]; then
     if [ -z "$PLUS_ARG" ]; then
       # Bare >+ : list all bookmarks
       RESULT=$("$BOOKMARKS_SH" list "$PLUGIN_ROOT")
-      printf '{"decision":"block","reason":"%s"}\n' "$(printf '%s' "$RESULT" | sed 's/"/\\"/g' | tr '\n' ' ')"
+      printf '{"decision":"block","reason":"[Claude Loves Shelly - Bookmarks]\\n%s"}\n' "$(printf '%s' "$RESULT" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')"
       exit 0
     fi
     BM_NAME=$(printf '%s' "$PLUS_ARG" | sed 's/^[[:space:]]*//' | cut -d' ' -f1)
@@ -62,23 +67,23 @@ if [ -n "$CMD" ]; then
     if [ -z "$BM_CMD" ]; then
       # >+name : lookup
       RESULT=$("$BOOKMARKS_SH" add "$PLUGIN_ROOT" "$BM_NAME")
-      printf '{"decision":"block","reason":"%s"}\n' "$(printf '%s' "$RESULT" | sed 's/"/\\"/g')"
+      printf '{"decision":"block","reason":"[Claude Loves Shelly - Bookmarks]\\n%s"}\n' "$(printf '%s' "$RESULT" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')"
       exit 0
     else
       # >+name command : save
       RESULT=$("$BOOKMARKS_SH" add "$PLUGIN_ROOT" "$BM_NAME" "$BM_CMD")
-      printf '{"decision":"block","reason":"%s"}\n' "$(printf '%s' "$RESULT" | sed 's/"/\\"/g')"
+      printf '{"decision":"block","reason":"[Claude Loves Shelly - Bookmarks]\\n%s"}\n' "$(printf '%s' "$RESULT" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')"
       exit 0
     fi
   elif [ "${CMD#-}" != "$CMD" ]; then
     # >- prefix: remove
     BM_NAME=$(printf '%s' "${CMD#-}" | sed 's/^[[:space:]]*//')
     if [ -z "$BM_NAME" ]; then
-      printf '{"decision":"block","reason":"Usage: >-[name]. Example: >-build"}\n'
+      printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nUsage: >-[name]. Example: >-build"}\n'
       exit 0
     fi
     RESULT=$("$BOOKMARKS_SH" remove "$PLUGIN_ROOT" "$BM_NAME")
-    printf '{"decision":"block","reason":"%s"}\n' "$(printf '%s' "$RESULT" | sed 's/"/\\"/g')"
+    printf '{"decision":"block","reason":"[Claude Loves Shelly - Bookmarks]\\n%s"}\n' "$(printf '%s' "$RESULT" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')"
     exit 0
   else
     # Check if first word is a bookmark
@@ -101,7 +106,7 @@ fi
 
 # Build window title
 if [ -n "$CMD" ]; then
-  TITLE="Shelly — $CMD"
+  TITLE="Shelly - $CMD"
 else
   TITLE="Shelly"
 fi
@@ -113,9 +118,9 @@ case "$OS" in
     if command -v wt.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
         if [ "$KEEP_OPEN" = true ]; then
-          MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" cmd /k "echo ^> $CMD && $CMD" 2>/dev/null &
+          MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" cmd /k "echo $HOOK_CWD^>$CMD && $CMD" 2>/dev/null &
         else
-          MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" cmd /c "echo ^> $CMD && $CMD" 2>/dev/null &
+          MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" cmd /c "echo $HOOK_CWD^>$CMD && $CMD" 2>/dev/null &
         fi
       else
         MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" 2>/dev/null &
@@ -123,9 +128,9 @@ case "$OS" in
     elif command -v powershell.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
         if [ "$KEEP_OPEN" = true ]; then
-          cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'; Write-Host '> $CMD'; $CMD\"" 2>/dev/null &
+          cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'; Write-Host 'PS $HOOK_CWD> $CMD'; $CMD\"" 2>/dev/null &
         else
-          cmd.exe /c "start \"$TITLE\" powershell -Command \"cd '$HOOK_CWD'; Write-Host '> $CMD'; $CMD\"" 2>/dev/null &
+          cmd.exe /c "start \"$TITLE\" powershell -Command \"cd '$HOOK_CWD'; Write-Host 'PS $HOOK_CWD> $CMD'; $CMD\"" 2>/dev/null &
         fi
       else
         cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'\"" 2>/dev/null &
@@ -133,9 +138,9 @@ case "$OS" in
     else
       if [ -n "$CMD" ]; then
         if [ "$KEEP_OPEN" = true ]; then
-          cmd.exe /c "start \"$TITLE\" cmd /k \"cd /d $HOOK_CWD && echo ^> $CMD && $CMD\"" 2>/dev/null &
+          cmd.exe /c "start \"$TITLE\" cmd /k \"cd /d $HOOK_CWD && echo $HOOK_CWD^>$CMD && $CMD\"" 2>/dev/null &
         else
-          cmd.exe /c "start \"$TITLE\" cmd /c \"cd /d $HOOK_CWD && echo ^> $CMD && $CMD\"" 2>/dev/null &
+          cmd.exe /c "start \"$TITLE\" cmd /c \"cd /d $HOOK_CWD && echo $HOOK_CWD^>$CMD && $CMD\"" 2>/dev/null &
         fi
       else
         cmd.exe /c "start \"$TITLE\" cmd /k \"cd /d $HOOK_CWD\"" 2>/dev/null &
@@ -146,7 +151,7 @@ case "$OS" in
     if [ -n "$CMD" ]; then
       ESCAPED=$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
       ESCAPED_TITLE=$(printf '%s' "$TITLE" | sed 's/\\/\\\\/g; s/"/\\"/g')
-      SCRIPT_CMD="printf '\\033]0;${ESCAPED_TITLE}\\007' && cd '${HOOK_CWD}' && echo '> ${ESCAPED}' && ${ESCAPED}"
+      SCRIPT_CMD="printf '\\033]0;${ESCAPED_TITLE}\\007' && cd '${HOOK_CWD}' && echo '${HOOK_CWD}\$ ${ESCAPED}' && ${ESCAPED}"
       if [ "$KEEP_OPEN" = false ]; then
         SCRIPT_CMD="${SCRIPT_CMD}; exit"
       fi
@@ -161,9 +166,9 @@ case "$OS" in
   Linux)
     if [ -n "$CMD" ]; then
       if [ "$KEEP_OPEN" = true ]; then
-        BASH_CMD="echo '> $CMD' && $CMD; exec bash"
+        BASH_CMD="echo '$HOOK_CWD\$ $CMD' && $CMD; exec bash"
       else
-        BASH_CMD="echo '> $CMD' && $CMD"
+        BASH_CMD="echo '$HOOK_CWD\$ $CMD' && $CMD"
       fi
     fi
     if command -v x-terminal-emulator >/dev/null 2>&1; then
@@ -197,20 +202,20 @@ case "$OS" in
         nohup xterm -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && exec bash" >/dev/null 2>&1 &
       fi
     else
-      printf '{"decision":"block","reason":"No terminal emulator found. Install x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, or xterm."}\n'
+      printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nNo terminal emulator found. Install x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, or xterm."}\n'
       exit 0
     fi
     ;;
   *)
-    printf '{"decision":"block","reason":"Unsupported platform: %s"}\n' "$OS"
+    printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nUnsupported platform: %s"}\n' "$OS"
     exit 0
     ;;
 esac
 
 if [ -n "$CMD" ]; then
   JSON_CMD=$(printf '%s' "$CMD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
-  printf '{"decision":"block","reason":"Opened external terminal: %s"}\n' "$JSON_CMD"
+  printf '{"decision":"block","reason":"[Claude Loves Shelly]\\nOpened external terminal: %s"}\n' "$JSON_CMD"
 else
-  printf '{"decision":"block","reason":"Opened terminal"}\n'
+  printf '{"decision":"block","reason":"[Claude Loves Shelly]\\nOpened terminal"}\n'
 fi
 exit 0
