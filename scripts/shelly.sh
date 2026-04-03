@@ -127,8 +127,9 @@ if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
         cmd)  INLINE_NAME="Command Prompt"; SHELL_CMD="cmd.exe /c" ;;
         ps)   INLINE_NAME="PowerShell"; SHELL_CMD="powershell.exe -Command" ;;
         wt)   INLINE_NAME="Windows Terminal" ;;
+        bash) ;;
         "")   ;;
-        *)    printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: wt, ps, cmd"}\n' "$TERMINAL_ALIAS"; exit 0 ;;
+        *)    printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: wt, ps, cmd, bash"}\n' "$TERMINAL_ALIAS"; exit 0 ;;
       esac
       ;;
     Darwin)
@@ -136,8 +137,9 @@ if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
       case "$TERMINAL_ALIAS" in
         terminal) INLINE_NAME="Terminal" ;;
         iterm)    INLINE_NAME="iTerm2" ;;
+        bash)     INLINE_NAME="Git Bash" ;;
         "")       ;;
-        *)        printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: terminal, iterm"}\n' "$TERMINAL_ALIAS"; exit 0 ;;
+        *)        printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: terminal, iterm, bash"}\n' "$TERMINAL_ALIAS"; exit 0 ;;
       esac
       ;;
     *)
@@ -147,8 +149,9 @@ if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
         konsole) INLINE_NAME="Konsole" ;;
         xfce)    INLINE_NAME="Xfce Terminal" ;;
         xterm)   INLINE_NAME="XTerm" ;;
+        bash)    INLINE_NAME="Git Bash" ;;
         "")      ;;
-        *)       printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: gnome, konsole, xfce, xterm"}\n' "$TERMINAL_ALIAS"; exit 0 ;;
+        *)       printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: gnome, konsole, xfce, xterm, bash"}\n' "$TERMINAL_ALIAS"; exit 0 ;;
       esac
       ;;
   esac
@@ -222,8 +225,21 @@ case "$OS" in
             start "$BATCH" >/dev/null 2>&1 &
           fi
           ;;
+        bash)
+          if ! command -v mintty >/dev/null 2>&1; then
+            printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''bash'\'' not found. Install Git Bash."}\n'
+            exit 0
+          fi
+          TERMINAL_NAME="Git Bash"
+          if [ -n "$CMD" ]; then
+            BASH_CMD="echo '$HOOK_CWD\$ $CMD' && $CMD && echo; exec bash"
+            mintty -t "$TITLE" -e bash -c "cd '$HOOK_CWD' && $BASH_CMD" &
+          else
+            mintty -t "$TITLE" -e bash -c "cd '$HOOK_CWD' && exec bash" &
+          fi
+          ;;
         *)
-          printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: wt, ps, cmd"}\n' "$TERMINAL_ALIAS"
+          printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: wt, ps, cmd, bash"}\n' "$TERMINAL_ALIAS"
           exit 0
           ;;
       esac
@@ -299,8 +315,22 @@ case "$OS" in
                     -e "end tell" \
                     -e "end tell" 2>/dev/null
           ;;
+        bash)
+          TERMINAL_NAME="Git Bash"
+          if [ -n "$CMD" ]; then
+            ESCAPED=$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+            ESCAPED_TITLE=$(printf '%s' "$TITLE" | sed 's/\\/\\\\/g; s/"/\\"/g')
+            SCRIPT_CMD="printf '\\033]0;${ESCAPED_TITLE}\\007' && cd '${HOOK_CWD}' && echo '${HOOK_CWD}\$ ${ESCAPED}' && ${ESCAPED} && echo"
+          else
+            SCRIPT_CMD="cd '${HOOK_CWD}' && exec bash"
+          fi
+          osascript -e "tell application \"Terminal\"" \
+                    -e "activate" \
+                    -e "do script \"${SCRIPT_CMD}\"" \
+                    -e "end tell" 2>/dev/null
+          ;;
         *)
-          printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: terminal, iterm"}\n' "$TERMINAL_ALIAS"
+          printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: terminal, iterm, bash"}\n' "$TERMINAL_ALIAS"
           exit 0
           ;;
       esac
@@ -373,8 +403,27 @@ case "$OS" in
             nohup xterm -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && exec bash" >/dev/null 2>&1 &
           fi
           ;;
+        bash)
+          TERMINAL_NAME="Git Bash"
+          if command -v x-terminal-emulator >/dev/null 2>&1; then
+            if [ -n "$CMD" ]; then
+              nohup x-terminal-emulator -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && $BASH_CMD" >/dev/null 2>&1 &
+            else
+              nohup x-terminal-emulator -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && exec bash" >/dev/null 2>&1 &
+            fi
+          elif command -v xterm >/dev/null 2>&1; then
+            if [ -n "$CMD" ]; then
+              nohup xterm -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && $BASH_CMD" >/dev/null 2>&1 &
+            else
+              nohup xterm -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && exec bash" >/dev/null 2>&1 &
+            fi
+          else
+            printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nNo terminal emulator found for bash alias."}\n'
+            exit 0
+          fi
+          ;;
         *)
-          printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: gnome, konsole, xfce, xterm"}\n' "$TERMINAL_ALIAS"
+          printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: gnome, konsole, xfce, xterm, bash"}\n' "$TERMINAL_ALIAS"
           exit 0
           ;;
       esac

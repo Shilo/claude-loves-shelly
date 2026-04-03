@@ -141,6 +141,7 @@ Override the default terminal with `!alias` after the `>` prefix:
 | Linux | `konsole` | Konsole |
 | Linux | `xfce` | Xfce Terminal |
 | Linux | `xterm` | XTerm |
+| All | `bash` | Git Bash (cross-platform) |
 
 Without `!alias`, Shelly auto-detects the best available terminal (default behavior).
 
