@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
 
-# Read hook input from stdin
+# Read hook input from stdin and parse all fields
 INPUT=$(cat)
-PROMPT=$(printf '%s' "$INPUT" | jq -r '.prompt // empty' 2>/dev/null) || exit 0
+eval "$(printf '%s' "$INPUT" | node -e "
+  const d=JSON.parse(require('fs').readFileSync(0,'utf8'));
+  const esc=s=>(s||'').replace(/\\\\/g,'\\\\\\\\').replace(/'/g,\"'\\\\''\");
+  const m={prompt:'PROMPT',session_id:'SESSION_ID',transcript_path:'TRANSCRIPT_PATH',
+           cwd:'CWD',permission_mode:'PERMISSION_MODE',hook_event_name:'EVENT_NAME'};
+  Object.entries(m).forEach(([k,v])=>console.log('HOOK_'+v+\"='\"+esc(d[k])+\"'\"));
+" 2>/dev/null)" || exit 0
 
-if [ -z "$PROMPT" ]; then
+if [ -z "$HOOK_PROMPT" ]; then
   exit 0
 fi
 
 # Case-insensitive prefix matching
-LOWER=$(printf '%s' "$PROMPT" | tr '[:upper:]' '[:lower:]')
+LOWER=$(printf '%s' "$HOOK_PROMPT" | tr '[:upper:]' '[:lower:]')
 CMD=""
 
-if [ "${PROMPT#!}" != "$PROMPT" ]; then
-  CMD="${PROMPT#!}"
+if [ "${HOOK_PROMPT#!}" != "$HOOK_PROMPT" ]; then
+  CMD="${HOOK_PROMPT#!}"
 elif [ "${LOWER#/shelly }" != "$LOWER" ]; then
-  CMD="${PROMPT#????????}"
+  CMD="${HOOK_PROMPT#????????}"
 elif [ "$LOWER" = "/shelly" ]; then
   jq -n '{"decision":"block","reason":"Usage: !<command> or /shelly <command>"}'
   exit 0
