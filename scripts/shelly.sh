@@ -46,9 +46,15 @@ CMD=$(printf '%s' "$CMD" | sed 's/^[[:space:]]*//')
 TERMINAL_ALIAS=""
 if [ -n "$CMD" ] && [ "${CMD#!}" != "$CMD" ]; then
   ALIAS_PART="${CMD#!}"
-  TERMINAL_ALIAS=$(printf '%s' "$ALIAS_PART" | cut -d' ' -f1)
-  TERMINAL_ALIAS=$(printf '%s' "$TERMINAL_ALIAS" | tr '[:upper:]' '[:lower:]')
-  CMD=$(printf '%s' "$ALIAS_PART" | sed "s/^[^ ]*[[:space:]]*//" )
+  TEMP_ALIAS=$(printf '%s' "$ALIAS_PART" | cut -d' ' -f1)
+  TEMP_ALIAS_LOWER=$(printf '%s' "$TEMP_ALIAS" | tr '[:upper:]' '[:lower:]')
+  
+  case "$TEMP_ALIAS_LOWER" in
+    wt|ps|cmd|bash|terminal|iterm|gnome|konsole|xfce|xterm)
+      TERMINAL_ALIAS="$TEMP_ALIAS_LOWER"
+      CMD=$(printf '%s' "$ALIAS_PART" | sed "s/^[^ ]*[[:space:]]*//" )
+      ;;
+  esac
 fi
 
 if [ -n "$CMD" ]; then
