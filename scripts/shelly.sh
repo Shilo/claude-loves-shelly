@@ -110,10 +110,10 @@ if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
   if [ -n "$CAPTURE" ]; then
     JSON_CWD=$(printf '%s' "$HOOK_CWD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
     JSON_CAPTURE=$(printf '%s' "$CAPTURE" | sed 's/[\\]/\\\\/g; s/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-    printf '{"decision":"block","reason":"[Claude Loves Shelly]\\n%s>%s\\n%s"}\n' "$JSON_CWD" "$JSON_CMD" "$JSON_CAPTURE"
+    printf '{"decision":"block","reason":"[Claude Loves Shelly]\\n%s> %s\\n%s"}\n' "$JSON_CWD" "$JSON_CMD" "$JSON_CAPTURE"
   else
     JSON_CWD=$(printf '%s' "$HOOK_CWD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
-    printf '{"decision":"block","reason":"[Claude Loves Shelly]\\n%s>%s\\n(no output)"}\n' "$JSON_CWD" "$JSON_CMD"
+    printf '{"decision":"block","reason":"[Claude Loves Shelly]\\n%s> %s\\n(no output)"}\n' "$JSON_CWD" "$JSON_CMD"
   fi
   exit 0
 fi

@@ -32,6 +32,34 @@ Type commands directly in your Claude session:
 
 Commands open in a new external terminal window so you can see output and interact with the process.
 
+## Cheatsheet
+
+| Command | Action |
+|---------|--------|
+| `>command` | Run command in external terminal (stays open) |
+| `>>command` | Run command locally and return output |
+| `>` | Open terminal in current directory |
+| `>+` | List all bookmarks |
+| `>+name command` | Save bookmark |
+| `>+name` | Look up bookmark |
+| `>-name` | Remove bookmark |
+| `>name` | Run bookmark (if exists, otherwise runs as command) |
+| `/shelly command` | Same as `>command` |
+| `/shelly >command` | Same as `>>command` |
+
+## Run and Capture Output
+
+Use `>>` to run a command locally and return its output directly in the conversation (no external terminal):
+
+```
+>>echo hello world
+>>git status
+>>node -e "console.log(1+1)"
+/shelly >echo hello world
+```
+
+Output is captured with a 10-second timeout (configurable via `SHELLY_TIMEOUT` environment variable). The external terminal still handles long-running or interactive commands with `>`.
+
 ## Bookmarks
 
 Save frequently used commands and run them with a short name.
@@ -67,7 +95,7 @@ Save frequently used commands and run them with a short name.
 >-build
 ```
 
-Bookmarks support positional arguments (`{1}`, `{2}`, ...) and template variables, all resolved at run time.
+Bookmarks support positional arguments (`{1}`, `{2}`, ...), `{0}` for all arguments, and template variables, all resolved at run time.
 
 ## Template Variables
 
@@ -90,7 +118,7 @@ Commands and bookmarks can include template variables that get replaced with hoo
 
 ## How it works
 
-A `UserPromptSubmit` hook intercepts prompts starting with `>` or `/shelly` (case-insensitive), extracts the command, and opens it in a platform-native terminal:
+A `UserPromptSubmit` hook intercepts prompts starting with `>` or `/shelly` (case-insensitive), extracts the command, and opens it in a platform-native terminal. `>>` or `/shelly >` runs the command locally and captures output instead.
 
 | Platform | Terminal |
 |----------|----------|

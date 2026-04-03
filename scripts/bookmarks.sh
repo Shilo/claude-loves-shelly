@@ -95,6 +95,7 @@ case "$OPERATION" in
       if(!d[name]){ process.exit(1); }
       let cmd=d[name];
       const args=(process.env.BM_ARGS||'').split(/\s+/).filter(Boolean);
+      cmd=cmd.split('{0}').join(process.env.BM_ARGS||'');
       args.forEach((a,i)=>{ cmd=cmd.split('{'+(i+1)+'}').join(a); });
       process.stdout.write(cmd);
     " 2>/dev/null)
