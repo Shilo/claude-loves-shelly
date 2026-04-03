@@ -140,7 +140,7 @@ case "$OS" in
   MINGW*|MSYS*|CYGWIN*)
     if command -v wt.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
-        MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" powershell -NoExit -Command "Write-Host 'PS ${HOOK_CWD}> ${CMD}'\; ${CMD}" 2>/dev/null &
+        MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" powershell -NoExit -Command "Write-Host 'PS ${HOOK_CWD}> ${CMD}'\; ${CMD}\; Write-Host ''" 2>/dev/null &
       else
         MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" 2>/dev/null &
       fi
@@ -172,7 +172,7 @@ case "$OS" in
     if [ -n "$CMD" ]; then
       ESCAPED=$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
       ESCAPED_TITLE=$(printf '%s' "$TITLE" | sed 's/\\/\\\\/g; s/"/\\"/g')
-      SCRIPT_CMD="printf '\\033]0;${ESCAPED_TITLE}\\007' && cd '${HOOK_CWD}' && echo '${HOOK_CWD}\$ ${ESCAPED}' && ${ESCAPED}"
+      SCRIPT_CMD="printf '\\033]0;${ESCAPED_TITLE}\\007' && cd '${HOOK_CWD}' && echo '${HOOK_CWD}\$ ${ESCAPED}' && ${ESCAPED} && echo"
     else
       SCRIPT_CMD="cd '${HOOK_CWD}'"
     fi
@@ -183,7 +183,7 @@ case "$OS" in
     ;;
   Linux)
     if [ -n "$CMD" ]; then
-      BASH_CMD="echo '$HOOK_CWD\$ $CMD' && $CMD; exec bash"
+      BASH_CMD="echo '$HOOK_CWD\$ $CMD' && $CMD && echo; exec bash"
     fi
     if command -v x-terminal-emulator >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
