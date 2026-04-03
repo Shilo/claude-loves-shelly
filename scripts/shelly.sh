@@ -14,8 +14,15 @@ if [ -z "$HOOK_PROMPT" ]; then
   exit 0
 fi
 
-# Prefix matching — >> must be checked before >
+# Normalize /shelly to > prefix so all paths share the same logic
 LOWER=$(printf '%s' "$HOOK_PROMPT" | tr '[:upper:]' '[:lower:]')
+if [ "${LOWER#/shelly }" != "$LOWER" ]; then
+  HOOK_PROMPT=">${HOOK_PROMPT#????????}"
+elif [ "$LOWER" = "/shelly" ]; then
+  HOOK_PROMPT=">"
+fi
+
+# Prefix matching — >> must be checked before >
 CMD=""
 KEEP_OPEN=true
 
@@ -24,28 +31,12 @@ if [ "${HOOK_PROMPT#>>}" != "$HOOK_PROMPT" ]; then
   KEEP_OPEN=false
 elif [ "${HOOK_PROMPT#>}" != "$HOOK_PROMPT" ]; then
   CMD="${HOOK_PROMPT#>}"
-elif [ "${LOWER#/shelly }" != "$LOWER" ]; then
-  CMD="${HOOK_PROMPT#????????}"
-elif [ "$LOWER" = "/shelly" ]; then
-  CMD=""
 else
   exit 0
 fi
 
 # Trim leading whitespace
 CMD=$(printf '%s' "$CMD" | sed 's/^[[:space:]]*//')
-
-# For /shelly, handle >> and > prefixes in CMD (e.g. /shelly >cmd = >>cmd)
-if [ "${HOOK_PROMPT#>}" = "$HOOK_PROMPT" ] && [ -n "$CMD" ]; then
-  if [ "${CMD#>>}" != "$CMD" ]; then
-    CMD="${CMD#>>}"
-    KEEP_OPEN=false
-    CMD=$(printf '%s' "$CMD" | sed 's/^[[:space:]]*//')
-  elif [ "${CMD#>}" != "$CMD" ]; then
-    CMD="${CMD#>}"
-    CMD=$(printf '%s' "$CMD" | sed 's/^[[:space:]]*//')
-  fi
-fi
 
 if [ -n "$CMD" ]; then
   # Bookmark routing
@@ -118,9 +109,9 @@ case "$OS" in
     if command -v wt.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
         if [ "$KEEP_OPEN" = true ]; then
-          MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" cmd /k "echo $HOOK_CWD^>$CMD && $CMD" 2>/dev/null &
+          MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" cmd /k "$CMD" 2>/dev/null &
         else
-          MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" cmd /c "echo $HOOK_CWD^>$CMD && $CMD" 2>/dev/null &
+          MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" cmd /c "$CMD" 2>/dev/null &
         fi
       else
         MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" 2>/dev/null &
@@ -128,9 +119,9 @@ case "$OS" in
     elif command -v powershell.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
         if [ "$KEEP_OPEN" = true ]; then
-          cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'; Write-Host 'PS $HOOK_CWD> $CMD'; $CMD\"" 2>/dev/null &
+          cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'; $CMD\"" 2>/dev/null &
         else
-          cmd.exe /c "start \"$TITLE\" powershell -Command \"cd '$HOOK_CWD'; Write-Host 'PS $HOOK_CWD> $CMD'; $CMD\"" 2>/dev/null &
+          cmd.exe /c "start \"$TITLE\" powershell -Command \"cd '$HOOK_CWD'; $CMD\"" 2>/dev/null &
         fi
       else
         cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'\"" 2>/dev/null &
@@ -138,9 +129,9 @@ case "$OS" in
     else
       if [ -n "$CMD" ]; then
         if [ "$KEEP_OPEN" = true ]; then
-          cmd.exe /c "start \"$TITLE\" cmd /k \"cd /d $HOOK_CWD && echo $HOOK_CWD^>$CMD && $CMD\"" 2>/dev/null &
+          cmd.exe /c "start \"$TITLE\" cmd /k \"cd /d $HOOK_CWD && $CMD\"" 2>/dev/null &
         else
-          cmd.exe /c "start \"$TITLE\" cmd /c \"cd /d $HOOK_CWD && echo $HOOK_CWD^>$CMD && $CMD\"" 2>/dev/null &
+          cmd.exe /c "start \"$TITLE\" cmd /c \"cd /d $HOOK_CWD && $CMD\"" 2>/dev/null &
         fi
       else
         cmd.exe /c "start \"$TITLE\" cmd /k \"cd /d $HOOK_CWD\"" 2>/dev/null &
@@ -214,7 +205,11 @@ esac
 
 if [ -n "$CMD" ]; then
   JSON_CMD=$(printf '%s' "$CMD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
-  printf '{"decision":"block","reason":"[Claude Loves Shelly]\\nOpened external terminal: %s"}\n' "$JSON_CMD"
+  if [ "$KEEP_OPEN" = true ]; then
+    printf '{"decision":"block","reason":"[Claude Loves Shelly]\\nOpened external terminal: %s"}\n' "$JSON_CMD"
+  else
+    printf '{"decision":"block","reason":"[Claude Loves Shelly]\\nRunning in external terminal (auto-close): %s"}\n' "$JSON_CMD"
+  fi
 else
   printf '{"decision":"block","reason":"[Claude Loves Shelly]\\nOpened terminal"}\n'
 fi
