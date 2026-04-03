@@ -130,7 +130,7 @@ if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
     MINGW*|MSYS*|CYGWIN*)
       INLINE_NAME="Git Bash"
       case "$TERMINAL_ALIAS" in
-        cmd)  INLINE_NAME="Command Prompt"; SHELL_CMD="cmd.exe /c" ;;
+        cmd)  INLINE_NAME="Command Prompt"; SHELL_CMD="cmd.exe //c" ;;
         ps)   INLINE_NAME="PowerShell"; SHELL_CMD="powershell.exe -Command" ;;
         wt)   INLINE_NAME="Windows Terminal" ;;
         bash) ;;
