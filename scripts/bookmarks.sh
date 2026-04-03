@@ -23,20 +23,24 @@ case "$OPERATION" in
     fi
     if [ -z "$COMMAND" ]; then
       # Lookup mode: no command provided, show existing bookmark
-      EXISTING=$(node -e "
-        const d=JSON.parse(require('fs').readFileSync('$BOOKMARKS_FILE','utf8'));
-        if(d['$NAME']) console.log('$NAME: '+d['$NAME']);
-        else { console.log(\"Bookmark '$NAME' does not exist\"); process.exit(1); }
+      EXISTING=$(BOOKMARKS_FILE="$BOOKMARKS_FILE" BM_NAME="$NAME" node -e "
+        const d=JSON.parse(require('fs').readFileSync(process.env.BOOKMARKS_FILE,'utf8'));
+        const name=process.env.BM_NAME;
+        if(d[name]) console.log(name+': '+d[name]);
+        else { console.log(\"Bookmark '\"+name+\"' does not exist\"); process.exit(1); }
       " 2>/dev/null)
+      STATUS=$?
       printf '%s\n' "$EXISTING"
-      exit 0
+      exit $STATUS
     fi
     # Save bookmark
-    node -e "
+    BOOKMARKS_FILE="$BOOKMARKS_FILE" BM_NAME="$NAME" node -e "
       const fs=require('fs');
-      const d=JSON.parse(fs.readFileSync('$BOOKMARKS_FILE','utf8'));
-      d['$NAME']=$(printf '%s' "$COMMAND" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync(0,'utf8')))");
-      fs.writeFileSync('$BOOKMARKS_FILE',JSON.stringify(d,null,2)+'\n');
+      const file=process.env.BOOKMARKS_FILE;
+      const name=process.env.BM_NAME;
+      const d=JSON.parse(fs.readFileSync(file,'utf8'));
+      d[name]=$(printf '%s' "$COMMAND" | node -e "process.stdout.write(JSON.stringify(require('fs').readFileSync(0,'utf8')))");
+      fs.writeFileSync(file,JSON.stringify(d,null,2)+'\n');
     " 2>/dev/null
     printf "Saved bookmark '%s': %s\n" "$NAME" "$COMMAND"
     ;;
