@@ -14,6 +14,8 @@ if [ -z "$HOOK_PROMPT" ]; then
   exit 0
 fi
 
+ORIGINAL_PROMPT="$HOOK_PROMPT"
+
 # Normalize /shelly to > prefix so all paths share the same logic
 LOWER=$(printf '%s' "$HOOK_PROMPT" | tr '[:upper:]' '[:lower:]')
 if [ "${LOWER#/shelly }" != "$LOWER" ]; then
@@ -88,13 +90,14 @@ if [ -n "$CMD" ]; then
     fi
   fi
 
-  # Replace template variables with hook input values
-  CMD="${CMD//\{prompt\}/$HOOK_PROMPT}"
-  CMD="${CMD//\{session_id\}/$HOOK_SESSION_ID}"
-  CMD="${CMD//\{transcript_path\}/$HOOK_TRANSCRIPT_PATH}"
-  CMD="${CMD//\{cwd\}/$HOOK_CWD}"
-  CMD="${CMD//\{permission_mode\}/$HOOK_PERMISSION_MODE}"
-  CMD="${CMD//\{hook_event_name\}/$HOOK_EVENT_NAME}"
+  # Replace template variables with hook input values (shell-escaped for safe use in bash -c)
+  shell_escape() { printf '%s' "$1" | sed "s/'/'\\\\''/g; 1s/^/'/; \$s/\$/'/"; }
+  CMD="${CMD//\{prompt\}/$(shell_escape "$ORIGINAL_PROMPT")}"
+  CMD="${CMD//\{session_id\}/$(shell_escape "$HOOK_SESSION_ID")}"
+  CMD="${CMD//\{transcript_path\}/$(shell_escape "$HOOK_TRANSCRIPT_PATH")}"
+  CMD="${CMD//\{cwd\}/$(shell_escape "$HOOK_CWD")}"
+  CMD="${CMD//\{permission_mode\}/$(shell_escape "$HOOK_PERMISSION_MODE")}"
+  CMD="${CMD//\{hook_event_name\}/$(shell_escape "$HOOK_EVENT_NAME")}"
 fi
 
 # For auto-close (>>), run locally and capture output instead of opening a terminal
