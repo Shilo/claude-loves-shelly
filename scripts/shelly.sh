@@ -138,13 +138,13 @@ fi
 OS=$(uname -s)
 case "$OS" in
   MINGW*|MSYS*|CYGWIN*)
-    if command -v wt.exe >/dev/null 2>&1; then
+    if false && command -v wt.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
         MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" powershell -NoExit -Command "Write-Host '${HOOK_CWD}> ${CMD}'; ${CMD}" 2>/dev/null &
       else
         MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" 2>/dev/null &
       fi
-    elif command -v powershell.exe >/dev/null 2>&1; then
+    elif false && command -v powershell.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
         cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'; Write-Host '$HOOK_CWD> $CMD'; $CMD\"" 2>/dev/null &
       else
@@ -152,9 +152,15 @@ case "$OS" in
       fi
     else
       if [ -n "$CMD" ]; then
-        cmd.exe /c "start \"$TITLE\" cmd /k \"cd /d $HOOK_CWD && echo $HOOK_CWD^>$CMD && $CMD\"" 2>/dev/null &
+        BATCH="$TEMP/shelly_$$.bat"
+        printf '@echo off\r\ncd /d "%s"\r\necho %s^>%s\r\n%s\r\necho.\r\ncmd /k\r\n' "$HOOK_CWD" "$HOOK_CWD" "$CMD" "$CMD" > "$BATCH"
+        start "$BATCH" >/dev/null 2>&1 &
+
       else
-        cmd.exe /c "start \"$TITLE\" cmd /k \"cd /d $HOOK_CWD\"" 2>/dev/null &
+        BATCH="$TEMP/shelly_$$.bat"
+        printf '@echo off\r\ncd /d "%s"\r\ncmd /k\r\n' "$HOOK_CWD" > "$BATCH"
+        start "$BATCH" >/dev/null 2>&1 &
+
       fi
     fi
     ;;
