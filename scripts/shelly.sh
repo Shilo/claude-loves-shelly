@@ -23,7 +23,7 @@ if [ "${HOOK_PROMPT#!}" != "$HOOK_PROMPT" ]; then
 elif [ "${LOWER#/shelly }" != "$LOWER" ]; then
   CMD="${HOOK_PROMPT#????????}"
 elif [ "$LOWER" = "/shelly" ]; then
-  printf '{"decision":"block","reason":"Usage: !<command> or /shelly <command>"}\n'
+  printf '{"decision":"block","reason":"Usage: !<command> or /shelly <command>. Example: !git status"}\n'
   exit 0
 else
   exit 0
@@ -33,7 +33,7 @@ fi
 CMD=$(printf '%s' "$CMD" | sed 's/^[[:space:]]*//')
 
 if [ -z "$CMD" ]; then
-  printf '{"decision":"block","reason":"Usage: !<command> or /shelly <command>"}\n'
+  printf '{"decision":"block","reason":"Usage: !<command> or /shelly <command>. Example: !git status"}\n'
   exit 0
 fi
 
@@ -50,7 +50,7 @@ OS=$(uname -s)
 case "$OS" in
   MINGW*|MSYS*|CYGWIN*)
     if command -v wt.exe >/dev/null 2>&1; then
-      wt.exe new-tab --title "Shelly" cmd /k "$CMD" 2>/dev/null &
+      MSYS_NO_PATHCONV=1 wt.exe new-tab --title "Shelly" cmd /k "$CMD" 2>/dev/null &
     elif command -v powershell.exe >/dev/null 2>&1; then
       cmd.exe /c "start \"Shelly\" powershell -NoExit -Command \"$CMD\"" 2>/dev/null &
     else
