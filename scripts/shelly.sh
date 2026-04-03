@@ -314,47 +314,107 @@ case "$OS" in
     fi
     ;;
   Linux)
-    if [ -n "$CMD" ]; then
-      BASH_CMD="echo '$HOOK_CWD\$ $CMD' && $CMD && echo; exec bash"
-    fi
-    if command -v x-terminal-emulator >/dev/null 2>&1; then
-      TERMINAL_NAME="Terminal"
+    if [ -n "$TERMINAL_ALIAS" ]; then
       if [ -n "$CMD" ]; then
-        nohup x-terminal-emulator -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && $BASH_CMD" >/dev/null 2>&1 &
-      else
-        nohup x-terminal-emulator -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && exec bash" >/dev/null 2>&1 &
+        BASH_CMD="echo '$HOOK_CWD\$ $CMD' && $CMD && echo; exec bash"
       fi
-    elif command -v gnome-terminal >/dev/null 2>&1; then
-      TERMINAL_NAME="GNOME Terminal"
-      if [ -n "$CMD" ]; then
-        nohup gnome-terminal --title="$TITLE" --working-directory="$HOOK_CWD" -- bash -c "$BASH_CMD" >/dev/null 2>&1 &
-      else
-        nohup gnome-terminal --title="$TITLE" --working-directory="$HOOK_CWD" >/dev/null 2>&1 &
-      fi
-    elif command -v konsole >/dev/null 2>&1; then
-      TERMINAL_NAME="Konsole"
-      if [ -n "$CMD" ]; then
-        nohup konsole -p tabtitle="$TITLE" --workdir "$HOOK_CWD" -e bash -c "$BASH_CMD" >/dev/null 2>&1 &
-      else
-        nohup konsole -p tabtitle="$TITLE" --workdir "$HOOK_CWD" >/dev/null 2>&1 &
-      fi
-    elif command -v xfce4-terminal >/dev/null 2>&1; then
-      TERMINAL_NAME="Xfce Terminal"
-      if [ -n "$CMD" ]; then
-        nohup xfce4-terminal --title="$TITLE" --working-directory="$HOOK_CWD" -e "bash -c \"$BASH_CMD\"" >/dev/null 2>&1 &
-      else
-        nohup xfce4-terminal --title="$TITLE" --working-directory="$HOOK_CWD" >/dev/null 2>&1 &
-      fi
-    elif command -v xterm >/dev/null 2>&1; then
-      TERMINAL_NAME="XTerm"
-      if [ -n "$CMD" ]; then
-        nohup xterm -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && $BASH_CMD" >/dev/null 2>&1 &
-      else
-        nohup xterm -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && exec bash" >/dev/null 2>&1 &
-      fi
+      case "$TERMINAL_ALIAS" in
+        gnome)
+          if ! command -v gnome-terminal >/dev/null 2>&1; then
+            printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''gnome'\'' not found. Install gnome-terminal."}\n'
+            exit 0
+          fi
+          TERMINAL_NAME="GNOME Terminal"
+          if [ -n "$CMD" ]; then
+            nohup gnome-terminal --title="$TITLE" --working-directory="$HOOK_CWD" -- bash -c "$BASH_CMD" >/dev/null 2>&1 &
+          else
+            nohup gnome-terminal --title="$TITLE" --working-directory="$HOOK_CWD" >/dev/null 2>&1 &
+          fi
+          ;;
+        konsole)
+          if ! command -v konsole >/dev/null 2>&1; then
+            printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''konsole'\'' not found. Install konsole."}\n'
+            exit 0
+          fi
+          TERMINAL_NAME="Konsole"
+          if [ -n "$CMD" ]; then
+            nohup konsole -p tabtitle="$TITLE" --workdir "$HOOK_CWD" -e bash -c "$BASH_CMD" >/dev/null 2>&1 &
+          else
+            nohup konsole -p tabtitle="$TITLE" --workdir "$HOOK_CWD" >/dev/null 2>&1 &
+          fi
+          ;;
+        xfce)
+          if ! command -v xfce4-terminal >/dev/null 2>&1; then
+            printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''xfce'\'' not found. Install xfce4-terminal."}\n'
+            exit 0
+          fi
+          TERMINAL_NAME="Xfce Terminal"
+          if [ -n "$CMD" ]; then
+            nohup xfce4-terminal --title="$TITLE" --working-directory="$HOOK_CWD" -e "bash -c \"$BASH_CMD\"" >/dev/null 2>&1 &
+          else
+            nohup xfce4-terminal --title="$TITLE" --working-directory="$HOOK_CWD" >/dev/null 2>&1 &
+          fi
+          ;;
+        xterm)
+          if ! command -v xterm >/dev/null 2>&1; then
+            printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''xterm'\'' not found. Install xterm."}\n'
+            exit 0
+          fi
+          TERMINAL_NAME="XTerm"
+          if [ -n "$CMD" ]; then
+            nohup xterm -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && $BASH_CMD" >/dev/null 2>&1 &
+          else
+            nohup xterm -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && exec bash" >/dev/null 2>&1 &
+          fi
+          ;;
+        *)
+          printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: gnome, konsole, xfce, xterm"}\n' "$TERMINAL_ALIAS"
+          exit 0
+          ;;
+      esac
     else
-      printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nNo terminal emulator found. Install x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, or xterm."}\n'
-      exit 0
+      if [ -n "$CMD" ]; then
+        BASH_CMD="echo '$HOOK_CWD\$ $CMD' && $CMD && echo; exec bash"
+      fi
+      if command -v x-terminal-emulator >/dev/null 2>&1; then
+        TERMINAL_NAME="Terminal"
+        if [ -n "$CMD" ]; then
+          nohup x-terminal-emulator -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && $BASH_CMD" >/dev/null 2>&1 &
+        else
+          nohup x-terminal-emulator -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && exec bash" >/dev/null 2>&1 &
+        fi
+      elif command -v gnome-terminal >/dev/null 2>&1; then
+        TERMINAL_NAME="GNOME Terminal"
+        if [ -n "$CMD" ]; then
+          nohup gnome-terminal --title="$TITLE" --working-directory="$HOOK_CWD" -- bash -c "$BASH_CMD" >/dev/null 2>&1 &
+        else
+          nohup gnome-terminal --title="$TITLE" --working-directory="$HOOK_CWD" >/dev/null 2>&1 &
+        fi
+      elif command -v konsole >/dev/null 2>&1; then
+        TERMINAL_NAME="Konsole"
+        if [ -n "$CMD" ]; then
+          nohup konsole -p tabtitle="$TITLE" --workdir "$HOOK_CWD" -e bash -c "$BASH_CMD" >/dev/null 2>&1 &
+        else
+          nohup konsole -p tabtitle="$TITLE" --workdir "$HOOK_CWD" >/dev/null 2>&1 &
+        fi
+      elif command -v xfce4-terminal >/dev/null 2>&1; then
+        TERMINAL_NAME="Xfce Terminal"
+        if [ -n "$CMD" ]; then
+          nohup xfce4-terminal --title="$TITLE" --working-directory="$HOOK_CWD" -e "bash -c \"$BASH_CMD\"" >/dev/null 2>&1 &
+        else
+          nohup xfce4-terminal --title="$TITLE" --working-directory="$HOOK_CWD" >/dev/null 2>&1 &
+        fi
+      elif command -v xterm >/dev/null 2>&1; then
+        TERMINAL_NAME="XTerm"
+        if [ -n "$CMD" ]; then
+          nohup xterm -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && $BASH_CMD" >/dev/null 2>&1 &
+        else
+          nohup xterm -T "$TITLE" -e bash -c "cd '$HOOK_CWD' && exec bash" >/dev/null 2>&1 &
+        fi
+      else
+        printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nNo terminal emulator found. Install x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, or xterm."}\n'
+        exit 0
+      fi
     fi
     ;;
   *)
