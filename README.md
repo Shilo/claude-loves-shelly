@@ -4,7 +4,7 @@ Claude plugin to run shell commands directly in a Claude session with `!` prefix
 
 ## Install
 
-Add the [Shilo claude-plugins marketplace](https://github.com/shilo/claude-plugins) and install:
+Add the [marketplace](https://github.com/shilo/claude-plugins) and install:
 ```
 /plugin marketplace add shilo/claude-plugins
 /plugin install claude-loves-shelly@shilo
