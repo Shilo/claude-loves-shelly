@@ -257,18 +257,61 @@ case "$OS" in
     fi
     ;;
   Darwin)
-    TERMINAL_NAME="Terminal"
-    if [ -n "$CMD" ]; then
-      ESCAPED=$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
-      ESCAPED_TITLE=$(printf '%s' "$TITLE" | sed 's/\\/\\\\/g; s/"/\\"/g')
-      SCRIPT_CMD="printf '\\033]0;${ESCAPED_TITLE}\\007' && cd '${HOOK_CWD}' && echo '${HOOK_CWD}\$ ${ESCAPED}' && ${ESCAPED} && echo"
+    if [ -n "$TERMINAL_ALIAS" ]; then
+      case "$TERMINAL_ALIAS" in
+        terminal)
+          TERMINAL_NAME="Terminal"
+          if [ -n "$CMD" ]; then
+            ESCAPED=$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+            ESCAPED_TITLE=$(printf '%s' "$TITLE" | sed 's/\\/\\\\/g; s/"/\\"/g')
+            SCRIPT_CMD="printf '\\033]0;${ESCAPED_TITLE}\\007' && cd '${HOOK_CWD}' && echo '${HOOK_CWD}\$ ${ESCAPED}' && ${ESCAPED} && echo"
+          else
+            SCRIPT_CMD="cd '${HOOK_CWD}'"
+          fi
+          osascript -e "tell application \"Terminal\"" \
+                    -e "activate" \
+                    -e "do script \"${SCRIPT_CMD}\"" \
+                    -e "end tell" 2>/dev/null
+          ;;
+        iterm)
+          if ! osascript -e 'id of application "iTerm2"' >/dev/null 2>&1; then
+            printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''iterm'\'' not found. Install iTerm2."}\n'
+            exit 0
+          fi
+          TERMINAL_NAME="iTerm2"
+          if [ -n "$CMD" ]; then
+            ESCAPED=$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+            SCRIPT_CMD="cd '${HOOK_CWD}' && echo '${HOOK_CWD}\$ ${ESCAPED}' && ${ESCAPED} && echo"
+          else
+            SCRIPT_CMD="cd '${HOOK_CWD}'"
+          fi
+          osascript -e "tell application \"iTerm2\"" \
+                    -e "activate" \
+                    -e "create window with default profile" \
+                    -e "tell current session of current window" \
+                    -e "write text \"${SCRIPT_CMD}\"" \
+                    -e "end tell" \
+                    -e "end tell" 2>/dev/null
+          ;;
+        *)
+          printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: terminal, iterm"}\n' "$TERMINAL_ALIAS"
+          exit 0
+          ;;
+      esac
     else
-      SCRIPT_CMD="cd '${HOOK_CWD}'"
+      TERMINAL_NAME="Terminal"
+      if [ -n "$CMD" ]; then
+        ESCAPED=$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+        ESCAPED_TITLE=$(printf '%s' "$TITLE" | sed 's/\\/\\\\/g; s/"/\\"/g')
+        SCRIPT_CMD="printf '\\033]0;${ESCAPED_TITLE}\\007' && cd '${HOOK_CWD}' && echo '${HOOK_CWD}\$ ${ESCAPED}' && ${ESCAPED} && echo"
+      else
+        SCRIPT_CMD="cd '${HOOK_CWD}'"
+      fi
+      osascript -e "tell application \"Terminal\"" \
+                -e "activate" \
+                -e "do script \"${SCRIPT_CMD}\"" \
+                -e "end tell" 2>/dev/null
     fi
-    osascript -e "tell application \"Terminal\"" \
-              -e "activate" \
-              -e "do script \"${SCRIPT_CMD}\"" \
-              -e "end tell" 2>/dev/null
     ;;
   Linux)
     if [ -n "$CMD" ]; then
