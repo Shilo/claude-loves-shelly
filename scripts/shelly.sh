@@ -117,17 +117,40 @@ fi
 
 # For auto-close (>>), run locally and capture output instead of opening a terminal
 if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
+  SHELL_CMD="bash -c"
   case "$(uname -s)" in
-    MINGW*|MSYS*|CYGWIN*) INLINE_NAME="Git Bash" ;;
-    *)                     INLINE_NAME="Bash" ;;
+    MINGW*|MSYS*|CYGWIN*)
+      INLINE_NAME="Git Bash"
+      case "$TERMINAL_ALIAS" in
+        cmd)  INLINE_NAME="Command Prompt"; SHELL_CMD="cmd.exe /c" ;;
+        ps)   INLINE_NAME="PowerShell"; SHELL_CMD="powershell.exe -Command" ;;
+        wt)   INLINE_NAME="Windows Terminal" ;;
+      esac
+      ;;
+    Darwin)
+      INLINE_NAME="Bash"
+      case "$TERMINAL_ALIAS" in
+        terminal) INLINE_NAME="Terminal" ;;
+        iterm)    INLINE_NAME="iTerm2" ;;
+      esac
+      ;;
+    *)
+      INLINE_NAME="Bash"
+      case "$TERMINAL_ALIAS" in
+        gnome)   INLINE_NAME="GNOME Terminal" ;;
+        konsole) INLINE_NAME="Konsole" ;;
+        xfce)    INLINE_NAME="Xfce Terminal" ;;
+        xterm)   INLINE_NAME="XTerm" ;;
+      esac
+      ;;
   esac
   SHELLY_TIMEOUT="${SHELLY_TIMEOUT:-10}"
   JSON_CMD=$(printf '%s' "$CMD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
   if command -v timeout >/dev/null 2>&1; then
-    CAPTURE=$(cd "$HOOK_CWD" 2>/dev/null && timeout "$SHELLY_TIMEOUT" bash -c "$CMD" 2>&1) || true
+    CAPTURE=$(cd "$HOOK_CWD" 2>/dev/null && timeout "$SHELLY_TIMEOUT" $SHELL_CMD "$CMD" 2>&1) || true
   else
     # macOS fallback: use perl one-liner for timeout
-    CAPTURE=$(cd "$HOOK_CWD" 2>/dev/null && perl -e "alarm $SHELLY_TIMEOUT; exec @ARGV" bash -c "$CMD" 2>&1) || true
+    CAPTURE=$(cd "$HOOK_CWD" 2>/dev/null && perl -e "alarm $SHELLY_TIMEOUT; exec @ARGV" $SHELL_CMD "$CMD" 2>&1) || true
   fi
   if [ -n "$CAPTURE" ]; then
     JSON_CWD=$(printf '%s' "$HOOK_CWD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
