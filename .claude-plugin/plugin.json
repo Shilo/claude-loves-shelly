@@ -1,6 +1,6 @@
 {
   "name": "claude-loves-shelly",
-  "description": "Run shell commands directly in Claude session with ! prefix or /shelly command",
+  "description": "Open commands in an external terminal from your Claude session with saved bookmarks",
   "version": "1.0.0",
   "author": {
     "name": "Shilo"
