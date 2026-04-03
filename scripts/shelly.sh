@@ -127,6 +127,8 @@ if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
         cmd)  INLINE_NAME="Command Prompt"; SHELL_CMD="cmd.exe /c" ;;
         ps)   INLINE_NAME="PowerShell"; SHELL_CMD="powershell.exe -Command" ;;
         wt)   INLINE_NAME="Windows Terminal" ;;
+        "")   ;;
+        *)    printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: wt, ps, cmd"}\n' "$TERMINAL_ALIAS"; exit 0 ;;
       esac
       ;;
     Darwin)
@@ -134,6 +136,8 @@ if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
       case "$TERMINAL_ALIAS" in
         terminal) INLINE_NAME="Terminal" ;;
         iterm)    INLINE_NAME="iTerm2" ;;
+        "")       ;;
+        *)        printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: terminal, iterm"}\n' "$TERMINAL_ALIAS"; exit 0 ;;
       esac
       ;;
     *)
@@ -143,6 +147,8 @@ if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
         konsole) INLINE_NAME="Konsole" ;;
         xfce)    INLINE_NAME="Xfce Terminal" ;;
         xterm)   INLINE_NAME="XTerm" ;;
+        "")      ;;
+        *)       printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: gnome, konsole, xfce, xterm"}\n' "$TERMINAL_ALIAS"; exit 0 ;;
       esac
       ;;
   esac
