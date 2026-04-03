@@ -140,14 +140,14 @@ case "$OS" in
   MINGW*|MSYS*|CYGWIN*)
     if command -v wt.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
-        MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" powershell -NoExit -Command "Write-Host '${HOOK_CWD}> ${CMD}'\; ${CMD}" 2>/dev/null &
+        MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" powershell -NoExit -Command "Write-Host 'PS ${HOOK_CWD}> ${CMD}'\; ${CMD}" 2>/dev/null &
       else
         MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" 2>/dev/null &
       fi
     elif command -v powershell.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
         BATCH="$TEMP/shelly_$$.ps1"
-        printf 'Set-Location "%s"\r\nWrite-Host "%s> %s"\r\n%s\r\nWrite-Host ""\r\n' "$HOOK_CWD" "$HOOK_CWD" "$CMD" "$CMD" > "$BATCH"
+        printf 'Set-Location "%s"\r\nWrite-Host "PS %s> %s"\r\n%s\r\nWrite-Host ""\r\n' "$HOOK_CWD" "$HOOK_CWD" "$CMD" "$CMD" > "$BATCH"
         start powershell.exe -NoExit -ExecutionPolicy Bypass -File "$BATCH" >/dev/null 2>&1 &
 
       else
