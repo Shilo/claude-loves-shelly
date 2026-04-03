@@ -1,0 +1,1 @@
+Claude plugin to run shell commands directly in a Claude session with `!` prefix or `/shelly` command.

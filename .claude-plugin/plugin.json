@@ -1,0 +1,11 @@
+{
+  "name": "claude-loves-shelly",
+  "description": "Run shell commands directly in Claude session with ! prefix or /shelly command",
+  "version": "1.0.0",
+  "author": {
+    "name": "Shilocity"
+  },
+  "repository": "https://github.com/Shilocity/claude-loves-shelly",
+  "license": "MIT",
+  "keywords": ["shell", "terminal", "command", "shelly"]
+}
