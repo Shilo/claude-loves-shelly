@@ -23,7 +23,7 @@ if [ "${HOOK_PROMPT#>}" != "$HOOK_PROMPT" ]; then
 elif [ "${LOWER#/shelly }" != "$LOWER" ]; then
   CMD="${HOOK_PROMPT#????????}"
 elif [ "$LOWER" = "/shelly" ]; then
-  printf '{"decision":"block","reason":"Usage: ><command> or /shelly <command>. Example: >git status"}\n'
+  printf '{"decision":"block","reason":"Usage: >[command] or /shelly [command]. Example: >git status"}\n'
   exit 0
 else
   exit 0
@@ -33,7 +33,7 @@ fi
 CMD=$(printf '%s' "$CMD" | sed 's/^[[:space:]]*//')
 
 if [ -z "$CMD" ]; then
-  printf '{"decision":"block","reason":"Usage: ><command> or /shelly <command>. Example: >git status"}\n'
+  printf '{"decision":"block","reason":"Usage: >[command] or /shelly [command]. Example: >git status"}\n'
   exit 0
 fi
 
@@ -68,7 +68,7 @@ elif [ "${CMD#-}" != "$CMD" ]; then
   # >- prefix: remove
   BM_NAME=$(printf '%s' "${CMD#-}" | sed 's/^[[:space:]]*//')
   if [ -z "$BM_NAME" ]; then
-    printf '{"decision":"block","reason":"Usage: >-<name>. Example: >-build"}\n'
+    printf '{"decision":"block","reason":"Usage: >-[name]. Example: >-build"}\n'
     exit 0
   fi
   RESULT=$("$BOOKMARKS_SH" remove "$PLUGIN_ROOT" "$BM_NAME")

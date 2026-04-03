@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Bookmark CRUD for claude-loves-shelly
-# Usage: bookmarks.sh <operation> <plugin_root> [name] [command...]
+# Usage: bookmarks.sh [operation] [plugin_root] [name] [command...]
 
 OPERATION="$1"
 PLUGIN_ROOT="$2"
@@ -18,7 +18,7 @@ fi
 case "$OPERATION" in
   add)
     if [ -z "$NAME" ]; then
-      printf 'Usage: >+<name> <command>\n'
+      printf 'Usage: >+[name] [command]\n'
       exit 1
     fi
     if [ -z "$COMMAND" ]; then
@@ -47,7 +47,7 @@ case "$OPERATION" in
 
   remove)
     if [ -z "$NAME" ]; then
-      printf 'Usage: >-<name>\n'
+      printf 'Usage: >-[name]\n'
       exit 1
     fi
     RESULT=$(BOOKMARKS_FILE="$BOOKMARKS_FILE" BM_NAME="$NAME" node -e "
