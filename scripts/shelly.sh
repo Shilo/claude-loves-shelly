@@ -42,6 +42,15 @@ fi
 # Trim leading whitespace
 CMD=$(printf '%s' "$CMD" | sed 's/^[[:space:]]*//')
 
+# Extract terminal alias (!alias) if present
+TERMINAL_ALIAS=""
+if [ -n "$CMD" ] && [ "${CMD#!}" != "$CMD" ]; then
+  ALIAS_PART="${CMD#!}"
+  TERMINAL_ALIAS=$(printf '%s' "$ALIAS_PART" | cut -d' ' -f1)
+  TERMINAL_ALIAS=$(printf '%s' "$TERMINAL_ALIAS" | tr '[:upper:]' '[:lower:]')
+  CMD=$(printf '%s' "$ALIAS_PART" | sed "s/^[^ ]*[[:space:]]*//" )
+fi
+
 if [ -n "$CMD" ]; then
   # Bookmark routing
   SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
