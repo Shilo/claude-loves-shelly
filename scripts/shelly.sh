@@ -90,8 +90,14 @@ if [ -n "$CMD" ]; then
     fi
   fi
 
-  # Replace template variables with hook input values (shell-escaped for safe use in bash -c)
-  shell_escape() { printf '%s' "$1" | sed "s/'/'\\\\''/g; 1s/^/'/; \$s/\$/'/"; }
+  # Replace template variables with hook input values (shell-escaped for safe use)
+  OS_CHECK=$(uname -s)
+  case "$OS_CHECK" in
+    MINGW*|MSYS*|CYGWIN*)
+      shell_escape() { printf '"%s"' "$(printf '%s' "$1" | sed 's/"/\\"/g')"; } ;;
+    *)
+      shell_escape() { printf '%s' "$1" | sed "s/'/'\\\\''/g; 1s/^/'/; \$s/\$/'/"; } ;;
+  esac
   CMD="${CMD//\{prompt\}/$(shell_escape "$ORIGINAL_PROMPT")}"
   CMD="${CMD//\{session_id\}/$(shell_escape "$HOOK_SESSION_ID")}"
   CMD="${CMD//\{transcript_path\}/$(shell_escape "$HOOK_TRANSCRIPT_PATH")}"
@@ -140,7 +146,7 @@ case "$OS" in
       fi
     elif command -v powershell.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
-        cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'; Write-Host '$HOOK_CWD>$CMD'; $CMD\"" 2>/dev/null &
+        cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'; Write-Host '$HOOK_CWD> $CMD'; $CMD\"" 2>/dev/null &
       else
         cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'\"" 2>/dev/null &
       fi
