@@ -17,7 +17,9 @@ fi
 # Normalize /shelly to > prefix so all paths share the same logic
 LOWER=$(printf '%s' "$HOOK_PROMPT" | tr '[:upper:]' '[:lower:]')
 if [ "${LOWER#/shelly }" != "$LOWER" ]; then
-  HOOK_PROMPT=">${HOOK_PROMPT#????????}"
+  REST="${HOOK_PROMPT#????????}"
+  # /shelly = >, so /shelly > = >>, /shelly >> = >>>  (>>> treated as >>)
+  HOOK_PROMPT=">$REST"
 elif [ "$LOWER" = "/shelly" ]; then
   HOOK_PROMPT=">"
 fi
@@ -27,7 +29,7 @@ CMD=""
 KEEP_OPEN=true
 
 if [ "${HOOK_PROMPT#>>}" != "$HOOK_PROMPT" ]; then
-  CMD="${HOOK_PROMPT#>>}"
+  CMD=$(printf '%s' "${HOOK_PROMPT#>>}" | sed 's/^>*//')
   KEEP_OPEN=false
 elif [ "${HOOK_PROMPT#>}" != "$HOOK_PROMPT" ]; then
   CMD="${HOOK_PROMPT#>}"
@@ -95,6 +97,27 @@ if [ -n "$CMD" ]; then
   CMD="${CMD//\{hook_event_name\}/$HOOK_EVENT_NAME}"
 fi
 
+# For auto-close (>>), run locally and capture output instead of opening a terminal
+if [ "$KEEP_OPEN" = false ] && [ -n "$CMD" ]; then
+  SHELLY_TIMEOUT="${SHELLY_TIMEOUT:-10}"
+  JSON_CMD=$(printf '%s' "$CMD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
+  if command -v timeout >/dev/null 2>&1; then
+    CAPTURE=$(cd "$HOOK_CWD" 2>/dev/null && timeout "$SHELLY_TIMEOUT" bash -c "$CMD" 2>&1) || true
+  else
+    # macOS fallback: use perl one-liner for timeout
+    CAPTURE=$(cd "$HOOK_CWD" 2>/dev/null && perl -e "alarm $SHELLY_TIMEOUT; exec @ARGV" bash -c "$CMD" 2>&1) || true
+  fi
+  if [ -n "$CAPTURE" ]; then
+    JSON_CWD=$(printf '%s' "$HOOK_CWD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
+    JSON_CAPTURE=$(printf '%s' "$CAPTURE" | sed 's/[\\]/\\\\/g; s/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+    printf '{"decision":"block","reason":"[Claude Loves Shelly]\\n%s>%s\\n%s"}\n' "$JSON_CWD" "$JSON_CMD" "$JSON_CAPTURE"
+  else
+    JSON_CWD=$(printf '%s' "$HOOK_CWD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
+    printf '{"decision":"block","reason":"[Claude Loves Shelly]\\n%s>%s\\n(no output)"}\n' "$JSON_CWD" "$JSON_CMD"
+  fi
+  exit 0
+fi
+
 # Build window title
 if [ -n "$CMD" ]; then
   TITLE="Shelly - $CMD"
@@ -108,31 +131,19 @@ case "$OS" in
   MINGW*|MSYS*|CYGWIN*)
     if command -v wt.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
-        if [ "$KEEP_OPEN" = true ]; then
-          MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" cmd /k "$CMD" 2>/dev/null &
-        else
-          MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" cmd /c "$CMD" 2>/dev/null &
-        fi
+        MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" cmd /k "echo $HOOK_CWD^>$CMD && $CMD" 2>/dev/null &
       else
         MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" 2>/dev/null &
       fi
     elif command -v powershell.exe >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
-        if [ "$KEEP_OPEN" = true ]; then
-          cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'; $CMD\"" 2>/dev/null &
-        else
-          cmd.exe /c "start \"$TITLE\" powershell -Command \"cd '$HOOK_CWD'; $CMD\"" 2>/dev/null &
-        fi
+        cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'; Write-Host '$HOOK_CWD>$CMD'; $CMD\"" 2>/dev/null &
       else
         cmd.exe /c "start \"$TITLE\" powershell -NoExit -Command \"cd '$HOOK_CWD'\"" 2>/dev/null &
       fi
     else
       if [ -n "$CMD" ]; then
-        if [ "$KEEP_OPEN" = true ]; then
-          cmd.exe /c "start \"$TITLE\" cmd /k \"cd /d $HOOK_CWD && $CMD\"" 2>/dev/null &
-        else
-          cmd.exe /c "start \"$TITLE\" cmd /c \"cd /d $HOOK_CWD && $CMD\"" 2>/dev/null &
-        fi
+        cmd.exe /c "start \"$TITLE\" cmd /k \"cd /d $HOOK_CWD && echo $HOOK_CWD^>$CMD && $CMD\"" 2>/dev/null &
       else
         cmd.exe /c "start \"$TITLE\" cmd /k \"cd /d $HOOK_CWD\"" 2>/dev/null &
       fi
@@ -143,9 +154,6 @@ case "$OS" in
       ESCAPED=$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
       ESCAPED_TITLE=$(printf '%s' "$TITLE" | sed 's/\\/\\\\/g; s/"/\\"/g')
       SCRIPT_CMD="printf '\\033]0;${ESCAPED_TITLE}\\007' && cd '${HOOK_CWD}' && echo '${HOOK_CWD}\$ ${ESCAPED}' && ${ESCAPED}"
-      if [ "$KEEP_OPEN" = false ]; then
-        SCRIPT_CMD="${SCRIPT_CMD}; exit"
-      fi
     else
       SCRIPT_CMD="cd '${HOOK_CWD}'"
     fi
@@ -156,11 +164,7 @@ case "$OS" in
     ;;
   Linux)
     if [ -n "$CMD" ]; then
-      if [ "$KEEP_OPEN" = true ]; then
-        BASH_CMD="echo '$HOOK_CWD\$ $CMD' && $CMD; exec bash"
-      else
-        BASH_CMD="echo '$HOOK_CWD\$ $CMD' && $CMD"
-      fi
+      BASH_CMD="echo '$HOOK_CWD\$ $CMD' && $CMD; exec bash"
     fi
     if command -v x-terminal-emulator >/dev/null 2>&1; then
       if [ -n "$CMD" ]; then
@@ -205,11 +209,7 @@ esac
 
 if [ -n "$CMD" ]; then
   JSON_CMD=$(printf '%s' "$CMD" | sed 's/[\\]/\\\\/g; s/"/\\"/g')
-  if [ "$KEEP_OPEN" = true ]; then
-    printf '{"decision":"block","reason":"[Claude Loves Shelly]\\nOpened external terminal: %s"}\n' "$JSON_CMD"
-  else
-    printf '{"decision":"block","reason":"[Claude Loves Shelly]\\nRunning in external terminal (auto-close): %s"}\n' "$JSON_CMD"
-  fi
+  printf '{"decision":"block","reason":"[Claude Loves Shelly]\\nOpened external terminal: %s"}\n' "$JSON_CMD"
 else
   printf '{"decision":"block","reason":"[Claude Loves Shelly]\\nOpened terminal"}\n'
 fi

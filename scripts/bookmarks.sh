@@ -80,7 +80,7 @@ case "$OPERATION" in
       const d=JSON.parse(require('fs').readFileSync(process.env.BOOKMARKS_FILE,'utf8'));
       const keys=Object.keys(d);
       if(!keys.length){ console.log('No bookmarks saved'); process.exit(0); }
-      keys.forEach(k=>console.log('- '+k+': '+d[k]));
+      keys.forEach((k,i)=>console.log((i+1)+'. '+k+': '+d[k]));
     " 2>/dev/null)
     printf '%s\n' "$RESULT"
     ;;
