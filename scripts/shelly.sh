@@ -176,36 +176,83 @@ fi
 OS=$(uname -s)
 case "$OS" in
   MINGW*|MSYS*|CYGWIN*)
-    if command -v wt.exe >/dev/null 2>&1; then
-      TERMINAL_NAME="Windows Terminal"
-      if [ -n "$CMD" ]; then
-        MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" powershell -NoExit -Command "Write-Host 'PS ${HOOK_CWD}> ${CMD}'\; ${CMD}\; Write-Host ''" 2>/dev/null &
-      else
-        MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" 2>/dev/null &
-      fi
-    elif command -v powershell.exe >/dev/null 2>&1; then
-      TERMINAL_NAME="PowerShell"
-      if [ -n "$CMD" ]; then
-        BATCH="$TEMP/shelly_$$.ps1"
-        printf 'Set-Location "%s"\r\nWrite-Host "PS %s> %s"\r\n%s\r\nWrite-Host ""\r\n' "$HOOK_CWD" "$HOOK_CWD" "$CMD" "$CMD" > "$BATCH"
-        start powershell.exe -NoExit -ExecutionPolicy Bypass -File "$BATCH" >/dev/null 2>&1 &
-
-      else
-        start powershell.exe -NoExit -Command "Set-Location '$HOOK_CWD'" >/dev/null 2>&1 &
-
-      fi
+    if [ -n "$TERMINAL_ALIAS" ]; then
+      case "$TERMINAL_ALIAS" in
+        wt)
+          if ! command -v wt.exe >/dev/null 2>&1; then
+            printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''wt'\'' not found. Install Windows Terminal."}\n'
+            exit 0
+          fi
+          TERMINAL_NAME="Windows Terminal"
+          if [ -n "$CMD" ]; then
+            MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" powershell -NoExit -Command "Write-Host 'PS ${HOOK_CWD}> ${CMD}'\; ${CMD}\; Write-Host ''" 2>/dev/null &
+          else
+            MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" 2>/dev/null &
+          fi
+          ;;
+        ps)
+          if ! command -v powershell.exe >/dev/null 2>&1; then
+            printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''ps'\'' not found. Install PowerShell."}\n'
+            exit 0
+          fi
+          TERMINAL_NAME="PowerShell"
+          if [ -n "$CMD" ]; then
+            BATCH="$TEMP/shelly_$$.ps1"
+            printf 'Set-Location "%s"\r\nWrite-Host "PS %s> %s"\r\n%s\r\nWrite-Host ""\r\n' "$HOOK_CWD" "$HOOK_CWD" "$CMD" "$CMD" > "$BATCH"
+            start powershell.exe -NoExit -ExecutionPolicy Bypass -File "$BATCH" >/dev/null 2>&1 &
+          else
+            start powershell.exe -NoExit -Command "Set-Location '$HOOK_CWD'" >/dev/null 2>&1 &
+          fi
+          ;;
+        cmd)
+          TERMINAL_NAME="Command Prompt"
+          if [ -n "$CMD" ]; then
+            BATCH="$TEMP/shelly_$$.bat"
+            printf '@echo off\r\ncd /d "%s"\r\necho %s^>%s\r\n%s\r\necho.\r\ncmd /k\r\n' "$HOOK_CWD" "$HOOK_CWD" "$CMD" "$CMD" > "$BATCH"
+            start "$BATCH" >/dev/null 2>&1 &
+          else
+            BATCH="$TEMP/shelly_$$.bat"
+            printf '@echo off\r\ncd /d "%s"\r\ncmd /k\r\n' "$HOOK_CWD" > "$BATCH"
+            start "$BATCH" >/dev/null 2>&1 &
+          fi
+          ;;
+        *)
+          printf '{"decision":"block","reason":"[Claude Loves Shelly - Error]\\nTerminal '\''%s'\'' not available on this platform. Available: wt, ps, cmd"}\n' "$TERMINAL_ALIAS"
+          exit 0
+          ;;
+      esac
     else
-      TERMINAL_NAME="Command Prompt"
-      if [ -n "$CMD" ]; then
-        BATCH="$TEMP/shelly_$$.bat"
-        printf '@echo off\r\ncd /d "%s"\r\necho %s^>%s\r\n%s\r\necho.\r\ncmd /k\r\n' "$HOOK_CWD" "$HOOK_CWD" "$CMD" "$CMD" > "$BATCH"
-        start "$BATCH" >/dev/null 2>&1 &
+      if command -v wt.exe >/dev/null 2>&1; then
+        TERMINAL_NAME="Windows Terminal"
+        if [ -n "$CMD" ]; then
+          MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" powershell -NoExit -Command "Write-Host 'PS ${HOOK_CWD}> ${CMD}'\; ${CMD}\; Write-Host ''" 2>/dev/null &
+        else
+          MSYS_NO_PATHCONV=1 wt.exe new-tab --title "$TITLE" --startingDirectory "$HOOK_CWD" 2>/dev/null &
+        fi
+      elif command -v powershell.exe >/dev/null 2>&1; then
+        TERMINAL_NAME="PowerShell"
+        if [ -n "$CMD" ]; then
+          BATCH="$TEMP/shelly_$$.ps1"
+          printf 'Set-Location "%s"\r\nWrite-Host "PS %s> %s"\r\n%s\r\nWrite-Host ""\r\n' "$HOOK_CWD" "$HOOK_CWD" "$CMD" "$CMD" > "$BATCH"
+          start powershell.exe -NoExit -ExecutionPolicy Bypass -File "$BATCH" >/dev/null 2>&1 &
 
+        else
+          start powershell.exe -NoExit -Command "Set-Location '$HOOK_CWD'" >/dev/null 2>&1 &
+
+        fi
       else
-        BATCH="$TEMP/shelly_$$.bat"
-        printf '@echo off\r\ncd /d "%s"\r\ncmd /k\r\n' "$HOOK_CWD" > "$BATCH"
-        start "$BATCH" >/dev/null 2>&1 &
+        TERMINAL_NAME="Command Prompt"
+        if [ -n "$CMD" ]; then
+          BATCH="$TEMP/shelly_$$.bat"
+          printf '@echo off\r\ncd /d "%s"\r\necho %s^>%s\r\n%s\r\necho.\r\ncmd /k\r\n' "$HOOK_CWD" "$HOOK_CWD" "$CMD" "$CMD" > "$BATCH"
+          start "$BATCH" >/dev/null 2>&1 &
 
+        else
+          BATCH="$TEMP/shelly_$$.bat"
+          printf '@echo off\r\ncd /d "%s"\r\ncmd /k\r\n' "$HOOK_CWD" > "$BATCH"
+          start "$BATCH" >/dev/null 2>&1 &
+
+        fi
       fi
     fi
     ;;
