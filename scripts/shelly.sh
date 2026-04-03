@@ -49,7 +49,13 @@ CMD="${CMD//\{hook_event_name\}/$HOOK_EVENT_NAME}"
 OS=$(uname -s)
 case "$OS" in
   MINGW*|MSYS*|CYGWIN*)
-    cmd.exe /c "start \"Shelly\" cmd /k $CMD" 2>/dev/null &
+    if command -v wt.exe >/dev/null 2>&1; then
+      wt.exe new-tab --title "Shelly" cmd /k "$CMD" 2>/dev/null &
+    elif command -v powershell.exe >/dev/null 2>&1; then
+      cmd.exe /c "start \"Shelly\" powershell -NoExit -Command \"$CMD\"" 2>/dev/null &
+    else
+      cmd.exe /c "start \"Shelly\" cmd /k $CMD" 2>/dev/null &
+    fi
     ;;
   Darwin)
     ESCAPED=$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
