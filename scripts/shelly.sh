@@ -37,6 +37,53 @@ if [ -z "$CMD" ]; then
   exit 0
 fi
 
+# Bookmark routing
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+BOOKMARKS_SH="$SCRIPT_DIR/bookmarks.sh"
+
+if [ "${CMD#+}" != "$CMD" ]; then
+  # >+ prefix: add, lookup, or list
+  PLUS_ARG="${CMD#+}"
+  if [ -z "$PLUS_ARG" ]; then
+    # Bare >+ : list all bookmarks
+    RESULT=$("$BOOKMARKS_SH" list "$PLUGIN_ROOT")
+    printf '{"decision":"block","reason":"%s"}\n' "$(printf '%s' "$RESULT" | sed 's/"/\\"/g' | tr '\n' ' ')"
+    exit 0
+  fi
+  BM_NAME=$(printf '%s' "$PLUS_ARG" | sed 's/^[[:space:]]*//' | cut -d' ' -f1)
+  BM_CMD=$(printf '%s' "$PLUS_ARG" | sed 's/^[[:space:]]*//' | sed "s/^$BM_NAME[[:space:]]*//" )
+  if [ -z "$BM_CMD" ]; then
+    # >+name : lookup
+    RESULT=$("$BOOKMARKS_SH" add "$PLUGIN_ROOT" "$BM_NAME")
+    printf '{"decision":"block","reason":"%s"}\n' "$(printf '%s' "$RESULT" | sed 's/"/\\"/g')"
+    exit 0
+  else
+    # >+name command : save
+    RESULT=$("$BOOKMARKS_SH" add "$PLUGIN_ROOT" "$BM_NAME" "$BM_CMD")
+    printf '{"decision":"block","reason":"%s"}\n' "$(printf '%s' "$RESULT" | sed 's/"/\\"/g')"
+    exit 0
+  fi
+elif [ "${CMD#-}" != "$CMD" ]; then
+  # >- prefix: remove
+  BM_NAME=$(printf '%s' "${CMD#-}" | sed 's/^[[:space:]]*//')
+  if [ -z "$BM_NAME" ]; then
+    printf '{"decision":"block","reason":"Usage: >-<name>. Example: >-build"}\n'
+    exit 0
+  fi
+  RESULT=$("$BOOKMARKS_SH" remove "$PLUGIN_ROOT" "$BM_NAME")
+  printf '{"decision":"block","reason":"%s"}\n' "$(printf '%s' "$RESULT" | sed 's/"/\\"/g')"
+  exit 0
+else
+  # Check if first word is a bookmark
+  FIRST_WORD=$(printf '%s' "$CMD" | cut -d' ' -f1)
+  REST=$(printf '%s' "$CMD" | sed "s/^$FIRST_WORD[[:space:]]*//" )
+  RESOLVED=$("$BOOKMARKS_SH" resolve "$PLUGIN_ROOT" "$FIRST_WORD" "$REST")
+  if [ $? -eq 0 ]; then
+    CMD="$RESOLVED"
+  fi
+fi
+
 # Replace template variables with hook input values
 CMD="${CMD//\{prompt\}/$HOOK_PROMPT}"
 CMD="${CMD//\{session_id\}/$HOOK_SESSION_ID}"
