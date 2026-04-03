@@ -1,1 +1,1 @@
-Claude plugin to open commands in an external terminal window with `>` prefix or `/shelly` command. Supports saved command bookmarks.
+Claude plugin to open commands in an external terminal window with `>` prefix or `/shelly` command. Use `>>` to auto-close the terminal after the command finishes. Type bare `>` to open a terminal in the current directory. Supports saved command bookmarks.
