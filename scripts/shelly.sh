@@ -23,7 +23,7 @@ if [ "${HOOK_PROMPT#!}" != "$HOOK_PROMPT" ]; then
 elif [ "${LOWER#/shelly }" != "$LOWER" ]; then
   CMD="${HOOK_PROMPT#????????}"
 elif [ "$LOWER" = "/shelly" ]; then
-  jq -n '{"decision":"block","reason":"Usage: !<command> or /shelly <command>"}'
+  printf '{"decision":"block","reason":"Usage: !<command> or /shelly <command>"}\n'
   exit 0
 else
   exit 0
@@ -33,7 +33,7 @@ fi
 CMD=$(printf '%s' "$CMD" | sed 's/^[[:space:]]*//')
 
 if [ -z "$CMD" ]; then
-  jq -n '{"decision":"block","reason":"Usage: !<command> or /shelly <command>"}'
+  printf '{"decision":"block","reason":"Usage: !<command> or /shelly <command>"}\n'
   exit 0
 fi
 
@@ -62,15 +62,16 @@ case "$OS" in
     elif command -v xterm >/dev/null 2>&1; then
       nohup xterm -e bash -c "$CMD; exec bash" >/dev/null 2>&1 &
     else
-      jq -n '{"decision":"block","reason":"No terminal emulator found. Install x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, or xterm."}'
+      printf '{"decision":"block","reason":"No terminal emulator found. Install x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, or xterm."}\n'
       exit 0
     fi
     ;;
   *)
-    jq -n --arg os "$OS" '{"decision":"block","reason":"Unsupported platform: \($os)"}'
+    printf '{"decision":"block","reason":"Unsupported platform: %s"}\n' "$OS"
     exit 0
     ;;
 esac
 
-jq -n --arg cmd "$CMD" '{"decision":"block","reason":"Opened external terminal: \($cmd)"}'
+JSON_CMD=$(printf '%s' "$CMD" | sed 's/\\/\\\\/g; s/"/\\"/g')
+printf '{"decision":"block","reason":"Opened external terminal: %s"}\n' "$JSON_CMD"
 exit 0
